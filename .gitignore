@@ -1,0 +1,17 @@
+# backend
+backend/.env
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/chroma_db/*
+!backend/chroma_db/.gitkeep
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# OS
+.DS_Store
