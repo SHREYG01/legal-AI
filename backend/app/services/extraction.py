@@ -46,18 +46,31 @@ def extract_docx(path: str) -> dict:
         raise HTTPException(status_code=422, detail=f"Could not open DOCX: {e}")
 
     segments, full_text_parts, idx = [], [], 0
+    pending_heading = None
+    pending_heading_text = None
     for para in document.paragraphs:
         text = para.text.strip()
         if not text:
             continue
-        idx += 1
         heading = (
             para.style.name
             if para.style and para.style.name.lower().startswith("heading")
             else None
         )
-        segments.append({"index": idx, "page_number": None, "heading": heading, "text": text})
-        full_text_parts.append(text)
+        if heading:
+            pending_heading = heading
+            pending_heading_text = text
+            continue
+        idx += 1
+        segments.append({"index": idx, "page_number": None, "heading": pending_heading, "text": text})
+        full_text_parts.append(f"{pending_heading_text}\n{text}" if pending_heading_text else text)
+        pending_heading = None
+        pending_heading_text = None
+
+    if pending_heading:
+        idx += 1
+        segments.append({"index": idx, "page_number": None, "heading": pending_heading, "text": pending_heading_text or ""})
+        full_text_parts.append(pending_heading_text or "")
 
     metadata = {"source_type": "docx", "num_pages": None}
     full_text = "\n\n".join(full_text_parts).strip()

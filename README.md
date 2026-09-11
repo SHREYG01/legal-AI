@@ -11,8 +11,8 @@ obligations, and deadlines, and compare two contracts.
 
 ## Local development
 
-Use Python 3.12 for the pinned ML dependencies on Windows. Python 3.13 can compile the application,
-but the older `transformers`/`tokenizers` stack may require native build tooling.
+The base setup uses a lightweight JSON/hash search fallback and does not require the C++ toolchain.
+Use Python 3.12 when installing the optional ML dependencies on Windows.
 
 ```powershell
 cd backend
@@ -21,6 +21,14 @@ py -3.12 -m venv venv
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
+
+For production-quality embeddings and ChromaDB, also install the optional stack:
+
+```powershell
+pip install -r requirements-ml.txt
+```
+
+Real LLM API keys work with either search backend.
 
 In a second terminal:
 
