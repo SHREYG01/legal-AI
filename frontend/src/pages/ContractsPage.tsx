@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Plus, X } from "lucide-react";
 import ContractCard from "../components/ContractCard";
 import EmptyState from "../components/EmptyState";
 import UploadZone from "../components/UploadZone";
 import { FileStack } from "lucide-react";
-import { mockContracts } from "../data/mockData";
-import type { ContractStatus } from "../types";
+import { useNavigate } from "react-router-dom";
+import { getContracts, uploadContract } from "../services/api";
+import type { Contract, ContractMetadata, ContractStatus } from "../types";
 
 const filters: { label: string; value: ContractStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -14,15 +15,64 @@ const filters: { label: string; value: ContractStatus | "all" }[] = [
 ];
 
 export default function ContractsPage() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ContractStatus | "all">("all");
   const [showUpload, setShowUpload] = useState(false);
+  const [contracts, setContracts] = useState<ContractMetadata[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = mockContracts.filter((c) => {
+  const loadContracts = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      setContracts(await getContracts());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load contracts.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadContracts();
+  }, []);
+
+  const displayContracts = useMemo<Contract[]>(
+    () => contracts.map((contract) => ({
+      id: contract.contract_id,
+      filename: contract.filename,
+      uploadDate: new Date(contract.upload_date).toLocaleDateString(),
+      pages: contract.num_pages ?? 0,
+      status: "ready",
+      riskCount: 0,
+      highRiskCount: 0,
+    })),
+    [contracts],
+  );
+
+  const filtered = displayContracts.filter((c) => {
     const matchesQuery = c.filename.toLowerCase().includes(query.toLowerCase());
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     return matchesQuery && matchesStatus;
   });
+
+  const handleFileSelected = async (file: File) => {
+    setIsUploading(true);
+    setError(null);
+    try {
+      const uploaded = await uploadContract(file);
+      setShowUpload(false);
+      await loadContracts();
+      navigate(`/contracts/${uploaded.contract_id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to upload contract.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,6 +110,13 @@ export default function ContractsPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="flex items-center justify-between rounded-lg border border-risk-high/20 bg-risk-high/5 px-4 py-3 text-sm text-risk-high">
+          <span>{error}</span>
+          <button onClick={() => void loadContracts()} className="font-medium underline">Retry</button>
+        </div>
+      )}
+
       {showUpload && (
         <div className="rounded-card border border-slate-200 bg-white p-5 shadow-card">
           <div className="mb-3 flex items-center justify-between">
@@ -68,12 +125,15 @@ export default function ContractsPage() {
               <X size={18} />
             </button>
           </div>
-          <UploadZone />
+          <UploadZone onFileSelected={handleFileSelected} disabled={isUploading} />
+          {isUploading && <p className="mt-3 text-center text-sm text-slate-500">Uploading and analyzing contract…</p>}
         </div>
       )}
 
       <div className="flex flex-col gap-3">
-        {filtered.length > 0 ? (
+        {isLoading ? (
+          <div className="rounded-card border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading contracts…</div>
+        ) : filtered.length > 0 ? (
           filtered.map((c) => <ContractCard key={c.id} contract={c} />)
         ) : (
           <EmptyState

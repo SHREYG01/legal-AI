@@ -8,6 +8,11 @@ class Settings(BaseSettings):
     chroma_persist_dir: str = "./chroma_db"
     llm_provider: str = "anthropic"
     anthropic_api_key: str = ""
+    openai_api_key: str = ""
+    openai_base_url: str = "https://api.openai.com/v1"
+    gemini_api_key: str = ""
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    mock_fallback: bool = True
     llm_model: str = "claude-sonnet-5"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     chunk_size: int = 800

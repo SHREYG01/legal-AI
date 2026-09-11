@@ -9,6 +9,31 @@ Upload a contract (PDF/DOCX) → AI pipeline extracts text → chunks + embeds i
 lets you ask questions (RAG), get a summary, see classified clauses, flagged risks, extracted
 obligations, and deadlines, and compare two contracts.
 
+## Local development
+
+Use Python 3.12 for the pinned ML dependencies on Windows. Python 3.13 can compile the application,
+but the older `transformers`/`tokenizers` stack may require native build tooling.
+
+```powershell
+cd backend
+py -3.12 -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+In a second terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend uses `http://localhost:8000` by default. Set `VITE_API_URL` if the backend runs elsewhere.
+The backend supports `LLM_PROVIDER=anthropic`, `gemini`, `openai`/compatible providers, or `mock`.
+When `MOCK_FALLBACK=true` (the default), missing provider credentials use deterministic offline responses.
+
 ## Architecture (high level)
 
 ```
@@ -84,7 +109,7 @@ legal-contract-assistant/
 
 ## Build order (this is the plan we'll follow, one step at a time)
 1. Architecture + folder structure ✅ (this step)
-2. Backend setup + document upload
+2. Backend setup + document upload ✅
 3. PDF/DOCX text extraction
 4. Chunking + embeddings + ChromaDB
 5. RAG Q&A
@@ -93,8 +118,8 @@ legal-contract-assistant/
 8. Obligation + deadline extraction
 9. Risk analysis
 10. Contract comparison
-11. React dashboard/UI
-12. Connect frontend + backend
+11. React dashboard/UI ✅
+12. Connect frontend + backend ✅
 13. Demo data + testing
 14. Final polish + README + viva explanation
 

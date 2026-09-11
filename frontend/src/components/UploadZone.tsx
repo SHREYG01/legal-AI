@@ -4,14 +4,16 @@ import { UploadCloud, FileText } from "lucide-react";
 interface UploadZoneProps {
   onFileSelected?: (file: File) => void;
   compact?: boolean;
+  disabled?: boolean;
 }
 
-export default function UploadZone({ onFileSelected, compact = false }: UploadZoneProps) {
+export default function UploadZone({ onFileSelected, compact = false, disabled = false }: UploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = (files: FileList | null) => {
+    if (disabled) return;
     const file = files?.[0];
     if (!file) return;
     setFileName(file.name);
@@ -30,10 +32,10 @@ export default function UploadZone({ onFileSelected, compact = false }: UploadZo
         setIsDragging(false);
         handleFiles(e.dataTransfer.files);
       }}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => !disabled && inputRef.current?.click()}
       className={`flex cursor-pointer flex-col items-center justify-center rounded-card border-2 border-dashed text-center transition-colors ${
         compact ? "p-6" : "p-12"
-      } ${isDragging ? "border-accent-600 bg-accent-50" : "border-slate-200 bg-slate-25 hover:border-accent-100"}`}
+      } ${isDragging ? "border-accent-600 bg-accent-50" : "border-slate-200 bg-slate-25 hover:border-accent-100"} ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
     >
       <input
         ref={inputRef}
@@ -41,6 +43,7 @@ export default function UploadZone({ onFileSelected, compact = false }: UploadZo
         accept=".pdf,.docx"
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
+        disabled={disabled}
       />
       {fileName ? (
         <>
