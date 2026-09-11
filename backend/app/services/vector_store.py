@@ -42,6 +42,11 @@ def add_chunks(contract_id: str, chunks: List[Dict[str, Any]]) -> int:
     return len(chunks)
 
 
+def delete_chunks(contract_id: str) -> None:
+    """Delete all indexed chunks belonging to a contract."""
+    _get_collection().delete(where={"contract_id": contract_id})
+
+
 def query_chunks(query_text: str, contract_id: Optional[str] = None, top_k: int = 5) -> List[Dict[str, Any]]:
     """Return the top_k chunks most similar to query_text, optionally scoped to one contract."""
     collection = _get_collection()

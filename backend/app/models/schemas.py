@@ -154,5 +154,18 @@ class UploadResponse(BaseModel):
     chunks_indexed: int
 
 
+class ContractMetadata(BaseModel):
+    contract_id: str
+    filename: str
+    size_bytes: int
+    upload_date: str
+    num_pages: Optional[int] = None
+    num_segments: int
+
+
+class ContractDetails(ContractMetadata):
+    extraction: ExtractionResult
+
+
 class ErrorResponse(BaseModel):
     detail: str

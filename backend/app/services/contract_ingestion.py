@@ -5,6 +5,7 @@ two files the same way before diffing them).
 import json
 import os
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from fastapi import UploadFile, HTTPException
@@ -31,6 +32,9 @@ def ingest_contract(file: UploadFile) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
 
     extraction = extract_text(dest_path, ext)
+    extraction["original_filename"] = file.filename or f"{contract_id}{ext}"
+    extraction["size_bytes"] = len(contents)
+    extraction["upload_date"] = datetime.now(timezone.utc).isoformat()
 
     extraction_path = os.path.join(settings.upload_dir, f"{contract_id}.json")
     with open(extraction_path, "w", encoding="utf-8") as f:
