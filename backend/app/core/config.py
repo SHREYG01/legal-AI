@@ -1,4 +1,5 @@
-from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -6,14 +7,16 @@ class Settings(BaseSettings):
     max_upload_mb: int = 15
     database_url: str = ""
     chroma_persist_dir: str = "./chroma_db"
-    llm_provider: str = "anthropic"
+    llm_provider: str = "groq"
+    groq_api_key: str = ""
+    groq_base_url: str = "https://api.groq.com/openai/v1"
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     gemini_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     mock_fallback: bool = True
-    llm_model: str = "claude-sonnet-5"
+    llm_model: str = "qwen/qwen3.8-27b"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     chunk_size: int = 800
     chunk_overlap: int = 100
@@ -21,8 +24,12 @@ class Settings(BaseSettings):
     fine_tuned_model_path: str = ""
     risk_model_path: str = ""  # future: path to a trained risk-classification model, if any
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @field_validator("llm_provider", "llm_model", "groq_api_key", "anthropic_api_key", "openai_api_key", "gemini_api_key", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
 
 
 settings = Settings()

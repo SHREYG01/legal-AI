@@ -17,6 +17,7 @@ from app.models.schemas import ChangeItem, HighlightedChange
 from app.services.chunking import chunk_segments
 from app.services.embeddings import embed_texts
 from app.services.llm_client import generate_answer
+from app.utils.json_parsing import parse_json_loose
 
 HIGH_SIMILARITY = 0.90  # >= this: treated as unchanged, not reported
 MOD_SIMILARITY = 0.55  # below this: no meaningful match -> ADDED/REMOVED
@@ -137,13 +138,8 @@ def _summarize_changes(changes: List[ChangeItem]) -> Tuple[str, List[Highlighted
     prompt = "Detected changes:\n\n" + "\n\n".join(lines)
     raw = generate_answer(SUMMARY_SYSTEM_PROMPT, prompt, max_tokens=1000)
 
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned
-
     try:
-        data = json.loads(cleaned)
+        data = parse_json_loose(raw)
     except json.JSONDecodeError:
         return "Changes were detected between the two versions; see the change list below.", []
 

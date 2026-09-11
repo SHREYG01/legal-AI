@@ -13,6 +13,7 @@ without a real model raises NotImplementedError rather than pretending to work.
 """
 import json
 import os
+import time
 from functools import lru_cache
 from typing import Any, Dict, List
 
@@ -23,6 +24,7 @@ from app.core.config import settings
 from app.models.schemas import RiskFinding
 from app.services.extraction_batching import atomize_segments, pack_batches, label_batch
 from app.services.llm_client import generate_answer
+from app.utils.json_parsing import extract_list_loose
 
 MAX_UNIT_CHARS = 1500
 MAX_BATCH_CHARS = 6000
@@ -69,7 +71,7 @@ class LLMRiskAnalyzer(RiskAnalyzer):
     method_name = "llm_grounded_analysis"
 
     def analyze_batch(self, labeled_excerpts: str) -> List[Dict[str, Any]]:
-        raw = generate_answer(SYSTEM_PROMPT, labeled_excerpts, max_tokens=1000)
+        raw = generate_answer(SYSTEM_PROMPT, labeled_excerpts, max_tokens=800)
         return _parse_batch_response(raw)
 
 
@@ -117,17 +119,7 @@ def _load_extraction(contract_id: str) -> Dict[str, Any]:
 
 
 def _parse_batch_response(raw: str) -> List[Dict[str, Any]]:
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned
-    try:
-        data = json.loads(cleaned)
-        if not isinstance(data, list):
-            return []
-    except json.JSONDecodeError:
-        return []  # malformed batch output is skipped, not fatal for the whole request
-
+    data = extract_list_loose(raw)
     items = []
     for entry in data:
         try:
@@ -152,6 +144,7 @@ def analyze_risks(contract_id: str, force: bool = False) -> Dict[str, Any]:
     all_risks: List[Dict[str, Any]] = []
     for batch in pack_batches(units, MAX_BATCH_CHARS):
         all_risks.extend(analyzer.analyze_batch(label_batch(batch)))
+        time.sleep(0.2)  # subtle pacing delay to respect Groq OTPM/RPM window
 
     output = {"contract_id": contract_id, "method": analyzer.method_name, "risks": all_risks}
     with open(cache_path, "w", encoding="utf-8") as f:

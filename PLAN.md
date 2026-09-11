@@ -1,4 +1,4 @@
-﻿# AI Legal Contract Assistant — Master Implementation Plan
+# AI Legal Contract Assistant — Master Implementation Plan
 
 > **Goal**: Guide an AI agent or developer step-by-step to complete the AI Legal Contract Assistant end-to-end without regressions, skipped steps, or missing connections.
 
@@ -83,10 +83,11 @@
 * **Problem**: Currently hardcoded strictly to Anthropic (`claude-sonnet-5`). If the user does not have an Anthropic key, the app fails on Q&A, summary, risks, and comparison.
 * **Task**:
   - Update `llm_client.py` and `config.py` to support multiple providers:
-    1. **`anthropic`**: Claude via `anthropic` library.
-    2. **`gemini`**: Google Gemini via `google-generativeai` or HTTP endpoint.
-    3. **`openai`**: OpenAI / OpenRouter / Groq via `openai` SDK or compatible API.
-    4. **`mock` / fallback**: Deterministic rule-based mock responses for development/offline testing without burning tokens.
+    1. **`groq`**: Ultra-fast inference via Groq's OpenAI-compatible API (`openai/gpt-oss-120b`, `qwen/qwen3.8-27b`). See detailed [GROQ_MIGRATION_PLAN.md](file:///d:/Legal_AI/legal-AI/GROQ_MIGRATION_PLAN.md) and [`plan.md`](file:///d:/Legal_AI/plan.md).
+    2. **`gemini`**: Google Gemini via REST endpoint.
+    3. **`anthropic`**: Claude via `anthropic` library.
+    4. **`openai`**: OpenAI / OpenRouter via OpenAI-compatible endpoint.
+    5. **`mock` / fallback**: Deterministic rule-based mock responses for development/offline testing without burning tokens.
 
 ### 2.4 Verify Backend Endpoints
 * Start backend server: `uvicorn app.main:app --reload --port 8000`

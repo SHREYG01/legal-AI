@@ -4,6 +4,7 @@ plain-text notes first, then the notes are combined into one structured summary.
 """
 import json
 import os
+import time
 from typing import Any, Dict
 
 from fastapi import HTTPException
@@ -13,6 +14,7 @@ from app.core.config import settings
 from app.models.schemas import ContractSummary
 from app.services.chunking import split_text
 from app.services.llm_client import generate_answer, LLMError
+from app.utils.json_parsing import parse_json_loose
 
 MAX_SINGLE_PASS_CHARS = 12000  # above this, use map-reduce instead of one LLM call
 MAP_CHUNK_CHARS = 6000
@@ -50,12 +52,8 @@ def _load_extraction(contract_id: str) -> Dict[str, Any]:
 
 
 def _parse_summary_json(raw: str) -> ContractSummary:
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned
     try:
-        return ContractSummary(**json.loads(cleaned))
+        return ContractSummary(**parse_json_loose(raw))
     except (json.JSONDecodeError, ValidationError) as e:
         raise LLMError(f"LLM returned an unexpected format for the summary: {e}")
 
@@ -67,6 +65,7 @@ def _map_reduce_summarize(full_text: str) -> ContractSummary:
         note = generate_answer(MAP_SYSTEM_PROMPT, piece, max_tokens=400)
         if note.strip() and "no relevant information" not in note.lower():
             notes.append(note.strip())
+        time.sleep(0.2)  # subtle pacing delay to respect Groq OTPM/RPM window
 
     combined_notes = "\n\n".join(notes) if notes else "No relevant information extracted."
     raw = generate_answer(REDUCE_SYSTEM_PROMPT, combined_notes, max_tokens=800)

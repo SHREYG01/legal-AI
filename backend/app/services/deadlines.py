@@ -4,6 +4,7 @@ deterministically (no extra LLM call needed for merging).
 """
 import json
 import os
+import time
 from typing import Any, Dict
 
 from fastapi import HTTPException
@@ -13,6 +14,7 @@ from app.core.config import settings
 from app.models.schemas import DeadlinesSummary
 from app.services.extraction_batching import atomize_segments, pack_batches, label_batch
 from app.services.llm_client import generate_answer
+from app.utils.json_parsing import parse_json_loose
 
 MAX_UNIT_CHARS = 1500
 MAX_BATCH_CHARS = 6000
@@ -52,12 +54,8 @@ def _load_extraction(contract_id: str) -> Dict[str, Any]:
 
 
 def _parse_batch_response(raw: str) -> DeadlinesSummary:
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned
     try:
-        return DeadlinesSummary(**json.loads(cleaned))
+        return DeadlinesSummary(**parse_json_loose(raw))
     except (json.JSONDecodeError, ValidationError):
         return DeadlinesSummary()  # malformed batch contributes nothing, not fatal
 
@@ -89,6 +87,7 @@ def extract_deadlines(contract_id: str, force: bool = False) -> Dict[str, Any]:
     for batch in pack_batches(units, MAX_BATCH_CHARS):
         raw = generate_answer(SYSTEM_PROMPT, label_batch(batch), max_tokens=600)
         merged = _merge(merged, _parse_batch_response(raw))
+        time.sleep(0.2)  # subtle pacing delay to respect Groq OTPM/RPM limits
 
     output = {"contract_id": contract_id, "deadlines": merged.model_dump()}
     with open(cache_path, "w", encoding="utf-8") as f:

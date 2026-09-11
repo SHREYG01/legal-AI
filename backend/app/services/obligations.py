@@ -4,6 +4,7 @@ parties, actions, or deadlines. Malformed LLM output is skipped, not fatal.
 """
 import json
 import os
+import time
 from typing import Any, Dict, List
 
 from fastapi import HTTPException
@@ -13,6 +14,7 @@ from app.core.config import settings
 from app.models.schemas import Obligation
 from app.services.extraction_batching import atomize_segments, pack_batches, label_batch
 from app.services.llm_client import generate_answer
+from app.utils.json_parsing import extract_list_loose
 
 MAX_UNIT_CHARS = 1500
 MAX_BATCH_CHARS = 6000
@@ -47,17 +49,7 @@ def _load_extraction(contract_id: str) -> Dict[str, Any]:
 
 
 def _parse_batch_response(raw: str) -> List[Obligation]:
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned
-    try:
-        data = json.loads(cleaned)
-        if not isinstance(data, list):
-            return []
-    except json.JSONDecodeError:
-        return []  # malformed batch output is skipped, not fatal for the whole request
-
+    data = extract_list_loose(raw)
     items = []
     for entry in data:
         try:
@@ -82,6 +74,7 @@ def extract_obligations(contract_id: str, force: bool = False) -> Dict[str, Any]
     for batch in pack_batches(units, MAX_BATCH_CHARS):
         raw = generate_answer(SYSTEM_PROMPT, label_batch(batch), max_tokens=800)
         all_obligations.extend(_parse_batch_response(raw))
+        time.sleep(0.2)  # subtle pacing delay to respect Groq OTPM/RPM limits
 
     output = {"contract_id": contract_id, "obligations": [o.model_dump() for o in all_obligations]}
     with open(cache_path, "w", encoding="utf-8") as f:
